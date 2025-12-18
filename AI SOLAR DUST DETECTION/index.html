@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Solar Monitoring</title>
+<style>
+body{
+  margin:0;
+  font-family:Segoe UI;
+  background:#eef4ff;
+  color:#333;
+}
+
+/* HEADER */
+header{
+  background:#0b3c91;
+  color:#fff;
+  padding:20px 40px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  position: sticky;
+  top:0;
+  z-index:100;
+  box-shadow:0 2px 8px rgba(0,0,0,0.3);
+}
+header h2{
+  margin:0;
+  font-size:24px;
+  color:#fff;
+}
+nav a{
+  color:#fff;
+  margin-left:20px;
+  text-decoration:none;
+  font-weight:500;
+  transition:0.3s;
+}
+nav a:hover{
+  color:#ffd700;
+}
+
+/* INFO BAR */
+.info-bar{
+  display:flex;
+  align-items:center;
+  gap:15px;
+  padding:15px 40px;
+  background:#fff;
+}
+#cityBtn, #detectorBtn{
+  padding:6px 12px;
+  background:#0b3c91;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+#cityInput{
+  padding:6px 10px;
+  border-radius:6px;
+  border:1px solid #ccc;
+  outline:none;
+  width:200px;
+  display:none;
+}
+#suggestions{
+  background:#fff;
+  position:absolute;
+  z-index:10;
+  width:220px;
+  display:none;
+}
+#suggestions div{
+  padding:8px;
+  cursor:pointer;
+  border-bottom:1px solid #eee;
+}
+#temp,#energy,#location{font-weight:500}
+
+/* HERO FULL SCREEN */
+.hero{
+  background: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url('https://tse4.mm.bing.net/th/id/OIP.f_-cl70y9pABkQ42UeDjCgHaE8?pid=Api&P=0&h=180') center/cover no-repeat;
+  background-size: cover;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  color:#fff;
+  padding:20px;
+}
+.hero h1{font-size:48px;margin-bottom:15px;}
+.hero p{font-size:22px;margin-bottom:30px;}
+
+/* BUTTONS */
+button.clean{padding:12px 30px;border:none;border-radius:25px;cursor:pointer;font-size:16px;margin-top:15px;}
+.start{background:#0b3c91;color:#fff;}
+.stop{background:#c0392b;color:#fff;margin-left:15px;}
+.detector{background:#27ae60;color:#fff;margin-left:15px;}
+#status{margin-top:20px;font-size:18px;font-weight:500}
+
+/* EXTRA CONTENT */
+.section{
+  padding:60px 40px;
+  background:#fff;
+  margin:0;
+  text-align:center;
+}
+.section h2{color:#0b3c91;margin-bottom:20px}
+.section p{max-width:700px;margin:0 auto;line-height:1.6;font-size:16}
+
+/* FOOTER */
+footer{
+  background:#0b3c91;
+  color:#fff;
+  text-align:center;
+  padding:25px;
+  margin-top:20px;
+}
+</style>
+</head>
+<body>
+
+<header>
+<h2>AI Solar Monitoring</h2>
+<nav>
+<a href="index.html">Home</a>
+<a href="dashboard.html">Dashboard</a>
+<a href="about.html">About</a>
+<a href="contact.html">Contact</a>
+</nav>
+</header>
+
+<!-- INFO BAR -->
+<div class="info-bar">
+<span id="location">📍 Not Selected</span>
+<button id="cityBtn">Change Location</button>
+<input type="text" id="cityInput" placeholder="Type city name">
+<div id="suggestions"></div>
+<span id="temp">🌡️ -- °C</span>
+<span>⚡ Today Energy: <b id="energy">-- kWh</b></span>
+</div>
+
+<!-- HERO SECTION -->
+<section class="hero">
+<h1>Welcome to AI Solar Monitoring</h1>
+<p>We keep your solar plates clean using AI-powered dust detection</p>
+<div>
+<button class="clean start" onclick="startCleaning()">Start Cleaning</button>
+<button class="clean stop" onclick="stopCleaning()">Stop Cleaning</button>
+<button class="clean detector" onclick="toggleDetector()">Detector</button>
+</div>
+<div id="status"></div>
+</section>
+
+<!-- EXTRA SCROLLABLE CONTENT -->
+<section class="section">
+<h2>Cleaning Prediction</h2>
+<p>The AI system predicts when the solar plates will need cleaning based on dust accumulation, weather conditions, and energy drop. Stay informed and maximize efficiency!</p>
+</section>
+
+<section class="section">
+<h2>Energy & Cost Estimation</h2>
+<p>Monitor your daily energy generation. If cleaning is missed, the system estimates potential energy loss and the corresponding electricity cost impact.</p>
+</section>
+
+<section class="section">
+<h2>Live Monitoring</h2>
+<p>Select your location to view live temperature and energy generation data. Start and stop cleaning remotely with real-time feedback and notifications.</p>
+</section>
+
+<footer>© 2025 AI Solar Dust Detection | Smart Renewable Energy System</footer>
+
+<audio id="alarm"><source src="https://www.soundjay.com/buttons/sounds/beep-07.mp3"></audio>
+
+<script>
+const apiKey="YOUR_OPENWEATHER_API_KEY";
+const locSpan=document.getElementById("location");
+const tempSpan=document.getElementById("temp");
+const energySpan=document.getElementById("energy");
+const cityBtn=document.getElementById("cityBtn");
+const cityInput=document.getElementById("cityInput");
+const suggestions=document.getElementById("suggestions");
+const status=document.getElementById("status");
+
+let detectorActive=false;
+
+// Load saved data
+let city=localStorage.getItem("city");
+let temp=localStorage.getItem("temp");
+let energy=localStorage.getItem("todayEnergy")||0;
+if(city) locSpan.innerText="📍 "+city;
+if(temp) tempSpan.innerText="🌡️ "+temp+" °C";
+energySpan.innerText=energy+" kWh";
+localStorage.setItem("cleaningStatus","Idle");
+
+// Show search input on button click
+cityBtn.onclick=()=>{
+  cityInput.style.display="inline-block";
+  suggestions.style.display="block";
+  cityInput.focus();
+}
+
+// Search suggestions
+cityInput.addEventListener("input",async e=>{
+  const q=e.target.value;if(q.length<3){ suggestions.innerHTML=""; return;}
+  const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
+  const data=await res.json();
+  suggestions.innerHTML="";
+  data.slice(0,5).forEach(c=>{
+    const div=document.createElement("div");div.innerText=c.display_name;
+    div.onclick=()=>selectCity(c);
+    suggestions.appendChild(div);
+  });
+});
+
+async function selectCity(c){
+  city=c.display_name;
+  locSpan.innerText="📍 "+city;
+  suggestions.innerHTML="";
+  cityInput.style.display="none";
+  cityInput.value="";
+  const res=await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${c.lat}&lon=${c.lon}&units=metric&appid=${apiKey}`);
+  const data=await res.json();
+  temp=data.main.temp.toFixed(1);
+  tempSpan.innerText="🌡️ "+temp+" °C";
+  localStorage.setItem("city",city);
+  localStorage.setItem("temp",temp);
+}
+
+// Cleaning logic
+let timer;
+const alarm=document.getElementById("alarm");
+function startCleaning(){
+  localStorage.setItem("cleaningStatus","Cleaning in progress");
+  const time=Math.floor(Math.random()*5)+3;
+  status.innerText=`🧹 Cleaning in progress… Estimated time: ${time} minutes`;
+  timer=setTimeout(()=>{
+    status.innerText="✅ Cleaning completed successfully!";
+    localStorage.setItem("cleaningStatus","Idle");
+    alarm.play();
+    const newEnergy=(parseFloat(energy)+Math.random()*2+3).toFixed(2);
+    energySpan.innerText=newEnergy+" kWh";
+    localStorage.setItem("todayEnergy",newEnergy);
+  },time*1000);
+}
+
+function stopCleaning(){
+  clearTimeout(timer);
+  alarm.pause();
+  alarm.currentTime=0;
+  status.innerText="⛔ Cleaning stopped by user";
+  localStorage.setItem("cleaningStatus","Idle");
+}
+
+// Detector toggle
+function toggleDetector(){
+  detectorActive = !detectorActive;
+  status.innerText = detectorActive ? "🟢 Detector Active" : "🔴 Detector Inactive";
+}  
+</script>
+</body>
+</html>

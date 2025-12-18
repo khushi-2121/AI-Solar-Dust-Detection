@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Select Location</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+<style>
+body{margin:0;font-family:Segoe UI;background:#eef4ff}
+header{background:#0b3c91;color:#fff;padding:20px;text-align:center}
+#map{height:400px;margin:20px;border-radius:12px}
+input{padding:10px;width:280px;margin-left:20px}
+#suggestions{background:#fff;border:1px solid #ccc;width:280px;margin-left:20px}
+#suggestions div{padding:8px;cursor:pointer}
+button{margin:20px;padding:12px 25px;background:#0b3c91;color:#fff;border:none;border-radius:20px;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<header><h2>Select Location</h2></header>
+
+<input id="city" placeholder="Search city name">
+<div id="suggestions"></div>
+<div id="map"></div>
+<div style="text-align:center">
+<button onclick="setLocation()">Set Location</button>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const apiKey="YOUR_OPENWEATHER_API_KEY"; 
+let lat=20.59,lon=78.96;
+const map=L.map('map').setView([lat,lon],5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let marker;
+
+map.on('click',e=>{
+  lat=e.latlng.lat; lon=e.latlng.lng;
+  marker&&map.removeLayer(marker);
+  marker=L.marker([lat,lon]).addTo(map);
+});
+
+document.getElementById("city").addEventListener("input",async e=>{
+  const q=e.target.value;
+  if(q.length<3) return;
+  const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
+  const data=await res.json();
+  const sug=document.getElementById("suggestions");
+  sug.innerHTML="";
+  data.slice(0,5).forEach(c=>{
+    const d=document.createElement("div");
+    d.innerText=c.display_name;
+    d.onclick=()=>{lat=c.lat;lon=c.lon;map.setView([lat,lon],10);sug.innerHTML=""};
+    sug.appendChild(d);
+  });
+});
+
+async function setLocation(){
+  const res=await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`);
+  const data=await res.json();
+  localStorage.setItem("city",data.name);
+  localStorage.setItem("temp",data.main.temp);
+  window.location.href="index.html";
+}
+</script>
+</body>
+</html>
